@@ -75,8 +75,9 @@ def predict(req: PredictRequest) -> PredictResponse:
 def model_info() -> dict:
     """Metadata completa del modelo (el cliente filtra lo que necesita)."""
     return {
-        "name": svc.METADATA.get("algorithm", "unknown"),
+        "name": svc.METADATA.get("model_name", "unknown"),
         "model_version": svc.METADATA.get("model_version", "unknown"),
+        "algorithm": svc.METADATA.get("algorithm", "unknown"),
         "dataset": svc.METADATA.get("dataset"),
         "features": svc.FEATURES,
         "target_names": svc.METADATA.get("target_names", []),

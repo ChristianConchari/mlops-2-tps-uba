@@ -5,7 +5,7 @@ Una sola query trae exactamente los campos pedidos (sin over-fetching).
 
 Levantar:  uv run uvicorn model_service.graphql:app --reload --port 8010
 GraphiQL:  http://127.0.0.1:8010/graphql
-    query { model { name version metrics { auc accuracy f1 } } }
+    query { model { name version algorithm metrics { auc accuracy f1 } } }
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ class Metrics:
 @strawberry.type
 class Model:
     name: str
-    version: int
+    version: str
+    algorithm: str
 
     @strawberry.field
     def metrics(self) -> Metrics:
@@ -39,11 +40,10 @@ class Model:
 class Query:
     @strawberry.field
     def model(self) -> Model:
-        raw_version = str(svc.METADATA.get("model_version", "0"))
-        major = int(raw_version.split(".")[0]) if raw_version[0].isdigit() else 0
         return Model(
-            name=svc.METADATA.get("algorithm", "unknown"),
-            version=major,
+            name=svc.METADATA.get("model_name", "unknown"),
+            version=str(svc.METADATA.get("model_version", "0")),
+            algorithm=svc.METADATA.get("algorithm", "unknown"),
         )
 
 

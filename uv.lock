@@ -1161,7 +1161,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mlops-lse-fiuba-tps"
+name = "mlops-2-tps-uba"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

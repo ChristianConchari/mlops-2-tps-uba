@@ -18,6 +18,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+MODEL_NAME = "iris-rf"
 MODEL_VERSION = "1.0.0"
 MODEL_DIR = Path(__file__).parent / "model"
 
@@ -55,6 +56,7 @@ def main() -> None:
 
     MODEL_DIR.mkdir(exist_ok=True)
     metadata = {
+        "model_name": MODEL_NAME,
         "model_version": MODEL_VERSION,
         "algorithm": "RandomForestClassifier",
         "dataset": "sklearn.datasets.load_iris",

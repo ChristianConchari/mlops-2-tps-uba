@@ -1,4 +1,5 @@
 {
+  "model_name": "iris-rf",
   "model_version": "1.0.0",
   "algorithm": "RandomForestClassifier",
   "dataset": "sklearn.datasets.load_iris",
@@ -16,5 +17,5 @@
   "test_accuracy": 0.9,
   "test_f1": 0.8997,
   "test_auc": 0.9933,
-  "trained_at": "2026-09-04T00:23:37.731649+00:00"
+  "trained_at": "2026-09-04T00:36:03.178930+00:00"
 }
