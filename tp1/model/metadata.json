@@ -1,0 +1,18 @@
+{
+  "model_version": "1.0.0",
+  "algorithm": "RandomForestClassifier",
+  "dataset": "sklearn.datasets.load_iris",
+  "features": [
+    "sepal_length_cm",
+    "sepal_width_cm",
+    "petal_length_cm",
+    "petal_width_cm"
+  ],
+  "target_names": [
+    "setosa",
+    "versicolor",
+    "virginica"
+  ],
+  "test_accuracy": 0.9,
+  "trained_at": "2026-09-03T21:41:06.199694+00:00"
+}
