@@ -22,10 +22,24 @@ Cada entrega queda fijada con un tag de git (`entrega-tp1`, `entrega-tp2`, …).
 
 ## Bitácora
 
-| TP | Sesión | Qué se agregó | Notebook | Tag |
-|----|--------|---------------|----------|-----|
-| Mini-TP 1 | 1 | Servicio REST del modelo Iris (FastAPI + Pydantic) | `entregas/tp1.ipynb` | `entrega-tp1` |
-| Mini-TP 2 | 2 | Capa GraphQL sobre el mismo servicio + comparación de llamadas/bytes vs REST | `entregas/tp2.ipynb` | `entrega-tp2` |
+| TP | Sesión | Qué se agregó | Notebook | Tag | Estado |
+|----|--------|---------------|----------|-----|--------|
+| Mini-TP 1 | 1 | Servicio REST del modelo `iris-rf` (FastAPI + contrato Pydantic): `POST /v1/predict` versionado, `GET /health`, validación → 422 | `entregas/tp1.ipynb` | `entrega-tp1` | ✅ Entregado |
+| Mini-TP 2 | 2 | Capa GraphQL (Strawberry) sobre el mismo servicio: tipo `Model` (`name`, `version`, `algorithm`, `metrics`) leído del artefacto + comparación REST vs GraphQL | `entregas/tp2.ipynb` | `entrega-tp2` | ✅ Entregado |
+
+### Mini-TP 2 — REST vs GraphQL (medido en el notebook)
+
+Armar *la vista del modelo* (`name`, `version`, `algorithm`, `auc`, `accuracy`, `f1`):
+
+| | Llamadas | Bytes | Campos de más |
+|---|---|---|---|
+| REST | 2 (`/v1/model` + `/v1/model/metrics`) | 341 | 4 (`dataset`, `features`, `target_names`, `trained_at`) |
+| GraphQL | 1 | 158 | 0 |
+
+GraphQL: una request con la forma exacta del dato (2.2× menos bytes, sin
+under- ni over-fetching). Costo: definir esquema y resolvers. Para una API chica
+y estable REST alcanza; GraphQL gana con muchos consumidores o grafos de datos
+con relaciones (linaje, MLflow).
 
 ## Puesta en marcha
 
@@ -39,6 +53,6 @@ uv run jupyter lab              # abrir entregas/*.ipynb
 Las APIs también se levantan sueltas:
 
 ```bash
-uv run uvicorn model_service.rest:app --port 8000       # REST
-uv run uvicorn model_service.graphql:app --port 8010    # GraphQL -> /graphql
+uv run uvicorn model_service.rest:app --port 8100       # REST
+uv run uvicorn model_service.graphql:app --port 8110    # GraphQL -> /graphql
 ```
