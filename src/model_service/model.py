@@ -1,7 +1,8 @@
 """Carga del modelo y sus metadatos.
 
-Módulo compartido: tanto la API REST (Mini-TP 1) como la API GraphQL
-(Mini-TP 2) leen el modelo desde acá.
+Módulo compartido: la API REST (Mini-TP 1), la API GraphQL (Mini-TP 2), el
+servidor gRPC (Mini-TP 3) y el pipeline de streaming (Mini-TP 4) leen el
+modelo desde acá.
 """
 
 from __future__ import annotations
@@ -39,6 +40,13 @@ def predict(features: list[float]) -> tuple[int, str]:
     labels = METADATA.get("target_names", [])
     label = labels[pred] if pred < len(labels) else str(pred)
     return pred, label
+
+
+def predict_batch(features: list[list[float]]) -> list[int]:
+    """Puntúa varios vectores de una sola vez (batch), sin ida y vuelta por evento."""
+    if _pipeline is None:
+        raise RuntimeError("El modelo no está cargado; corré train.py primero.")
+    return [int(p) for p in _pipeline.predict(np.array(features))]
 
 
 def metrics() -> dict[str, float]:

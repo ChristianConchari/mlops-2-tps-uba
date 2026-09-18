@@ -13,12 +13,14 @@ src/model_service/     el servicio (código compartido entre TPs)
   proto/scoring.proto  contrato gRPC (Mini-TP 3)
   scoring_pb2*.py       stubs generados (Mini-TP 3)
   grpc_server.py        API gRPC      (Mini-TP 3)
+  streaming.py          scoring online + drift (Mini-TP 4)
 train.py               entrena y genera model/model.joblib
 model/                 artefacto entrenado + metadata
 entregas/              un notebook por entrega (narrativa evaluable)
   tp1.ipynb            REST: contrato, /v1/predict, /health
   tp2.ipynb            GraphQL + comparación REST vs GraphQL
   tp3.ipynb            gRPC (unary + streaming) + comparación gRPC vs REST
+  tp4.ipynb            streaming: inferencia online, ventanas, drift, batch vs streaming
 ```
 
 Cada entrega queda fijada con un tag de git (`entrega-tp1`, `entrega-tp2`, …).
@@ -31,6 +33,7 @@ Cada entrega queda fijada con un tag de git (`entrega-tp1`, `entrega-tp2`, …).
 | Mini-TP 1 | 1 | Servicio REST del modelo `iris-rf` (FastAPI + contrato Pydantic): `POST /v1/predict` versionado, `GET /health`, validación → 422 | `entregas/tp1.ipynb` | `entrega-tp1` | ✅ Entregado |
 | Mini-TP 2 | 2 | Capa GraphQL (Strawberry) sobre el mismo servicio: tipo `Model` (`name`, `version`, `algorithm`, `metrics`) leído del artefacto + comparación REST vs GraphQL | `entregas/tp2.ipynb` | `entrega-tp2` | ✅ Entregado |
 | Mini-TP 3 | 3 | Servicio gRPC (`scoring.proto` tipado a los 4 features del modelo): `Predict` unary y `PredictBatch` server-streaming, servidor carga el modelo una sola vez + comparación de latencia gRPC vs REST | `entregas/tp3.ipynb` | `entrega-tp3` | ✅ Entregado |
+| Mini-TP 4 | 4 | Scoring online sobre un flujo de eventos (`streaming.py`): productor/consumidor en threads, inferencia evento a evento, métricas por ventana deslizante (throughput, p95), detector de drift por z-score + alertas, comparación contra scoring batch | `entregas/tp4.ipynb` | `entrega-tp4` | ✅ Entregado |
 
 ### Mini-TP 2 — REST vs GraphQL (medido en el notebook)
 
@@ -61,6 +64,24 @@ que la **inferencia domina** el tiempo total y diluye el ahorro de transporte
 de gRPC (HTTP/2 + Protobuf binario vs JSON/HTTP-1.1). gRPC seguiría siendo la
 opción para comunicación interna de alto volumen o que necesite streaming
 real; el costo de su contrato estricto no se justificó acá en latencia pura.
+
+### Mini-TP 4 — streaming vs batch (medido en el notebook)
+
+800 eventos (features tipo Iris, drift +2.5σ inyectado a mitad del flujo),
+mismo modelo `iris-rf` puntuado evento a evento vs en un solo batch:
+
+| | ms/evento |
+|---|---|
+| Streaming (online) | 24.89 |
+| Batch | 0.035 |
+
+El batch resultó ~700x más barato por evento (una sola llamada vectorizada a
+`pipeline.predict` vs. N llamadas individuales con overhead de cola/hilo en
+el medio); las 800 predicciones coinciden entre ambos caminos. El detector de
+drift (z-score de la media de la ventana deslizante de 100 eventos contra la
+media/desvío de entrenamiento, revisado cada 50 eventos) disparó 7 alertas,
+todas después del evento 500 — la primera ventana que queda enteramente del
+lado corrido del flujo tras el cambio de distribución inyectado en el 400.
 
 ## Puesta en marcha
 
