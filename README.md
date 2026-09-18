@@ -55,15 +55,16 @@ con relaciones (linaje, MLflow).
 
 | | ms/llamada |
 |---|---|
-| gRPC | 15.05 |
-| REST | 16.10 |
+| gRPC | 16.54 |
+| REST | 16.80 |
 
-Solo ~1.1x más rápido (mucho menos que en el lab teórico con modelos de
-juguete): el modelo real es un `RandomForestClassifier` de 200 árboles, así
-que la **inferencia domina** el tiempo total y diluye el ahorro de transporte
-de gRPC (HTTP/2 + Protobuf binario vs JSON/HTTP-1.1). gRPC seguiría siendo la
-opción para comunicación interna de alto volumen o que necesite streaming
-real; el costo de su contrato estricto no se justificó acá en latencia pura.
+Prácticamente empatados (~1.0x, mucho menos margen que en el lab teórico con
+modelos de juguete): el modelo real es un `RandomForestClassifier` de 200
+árboles, así que la **inferencia domina** el tiempo total y diluye el ahorro
+de transporte de gRPC (HTTP/2 + Protobuf binario vs JSON/HTTP-1.1). gRPC
+seguiría siendo la opción para comunicación interna de alto volumen o que
+necesite streaming real; el costo de su contrato estricto no se justificó
+acá en latencia pura.
 
 ### Mini-TP 4 — streaming vs batch (medido en el notebook)
 
@@ -72,10 +73,10 @@ mismo modelo `iris-rf` puntuado evento a evento vs en un solo batch:
 
 | | ms/evento |
 |---|---|
-| Streaming (online) | 24.89 |
-| Batch | 0.035 |
+| Streaming (online) | 13.06 |
+| Batch | 0.022 |
 
-El batch resultó ~700x más barato por evento (una sola llamada vectorizada a
+El batch resultó ~590x más barato por evento (una sola llamada vectorizada a
 `pipeline.predict` vs. N llamadas individuales con overhead de cola/hilo en
 el medio); las 800 predicciones coinciden entre ambos caminos. El detector de
 drift (z-score de la media de la ventana deslizante de 100 eventos contra la
