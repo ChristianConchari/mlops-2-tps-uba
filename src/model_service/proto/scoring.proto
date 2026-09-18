@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package scoring;
+
+// Mismos 4 features reales del modelo iris-rf (ver PredictRequest en rest.py).
+message Features {
+  double sepal_length_cm = 1;
+  double sepal_width_cm = 2;
+  double petal_length_cm = 3;
+  double petal_width_cm = 4;
+}
+
+message FeatureBatch {
+  repeated Features items = 1;
+}
+
+message Prediction {
+  int32 prediction = 1;
+  string prediction_label = 2;
+  string model_version = 3;
+}
+
+service Scoring {
+  // Unary: una predicción por llamada (equivalente a POST /v1/predict).
+  rpc Predict (Features) returns (Prediction);
+  // Server-streaming: puntúa un lote y devuelve las predicciones como stream.
+  rpc PredictBatch (FeatureBatch) returns (stream Prediction);
+}
