@@ -34,57 +34,57 @@ DRIFT_Z_THRESHOLD = 2.5  # alerta si la media de la ventana se aleja > 2.5 sigma
 
 
 @dataclass
-class Evento:
+class Event:
     values: list[float]
     t: float
 
 
-def generar_eventos(n: int, drift_at: float = 0.5, seed: int = 42) -> list[Evento]:
+def generate_events(n: int, drift_at: float = 0.5, seed: int = 42) -> list[Event]:
     """Genera `n` eventos con las 4 features del modelo. A partir de
     `drift_at` (fracción del flujo) corre la distribución +2.5 sigma por
     feature, simulando un sensor/población distinta, para poder disparar
     el detector de drift más adelante."""
     rng = random.Random(seed)
-    corte = int(n * drift_at)
-    eventos = []
+    cutoff = int(n * drift_at)
+    events = []
     for i in range(n):
-        centro = BASELINE_MEAN + (2.5 * BASELINE_STD if i >= corte else 0.0)
-        values = [rng.gauss(mu, sigma) for mu, sigma in zip(centro, BASELINE_STD)]
-        eventos.append(Evento(values=values, t=time.time()))
-    return eventos
+        center = BASELINE_MEAN + (2.5 * BASELINE_STD if i >= cutoff else 0.0)
+        values = [rng.gauss(mu, sigma) for mu, sigma in zip(center, BASELINE_STD)]
+        events.append(Event(values=values, t=time.time()))
+    return events
 
 
-def productor(stream: "queue.Queue", eventos: list[Evento], delay: float = 0.0005) -> None:
-    for ev in eventos:
+def producer(stream: "queue.Queue", events: list[Event], delay: float = 0.0005) -> None:
+    for ev in events:
         stream.put(ev)
         time.sleep(delay)
     stream.put(STOP)
 
 
 @dataclass
-class ResultadoStreaming:
-    latencias_ms: list[float] = field(default_factory=list)
-    predicciones: list[int] = field(default_factory=list)
-    alertas: list[dict] = field(default_factory=list)
+class StreamingResult:
+    latencies_ms: list[float] = field(default_factory=list)
+    predictions: list[int] = field(default_factory=list)
+    alerts: list[dict] = field(default_factory=list)
     throughput_ev_s: float = 0.0
     p95_ms: float = 0.0
-    duracion_s: float = 0.0
+    duration_s: float = 0.0
 
 
-def _revisar_drift(ventana: deque[Evento], procesados: int, resultado: ResultadoStreaming) -> None:
-    medias = np.mean([w.values for w in ventana], axis=0)
-    z = (medias - BASELINE_MEAN) / BASELINE_STD
+def _check_drift(window: deque[Event], processed: int, result: StreamingResult) -> None:
+    means = np.mean([w.values for w in window], axis=0)
+    z = (means - BASELINE_MEAN) / BASELINE_STD
     idx = int(np.argmax(np.abs(z)))
     z_max = float(z[idx])
     if abs(z_max) > DRIFT_Z_THRESHOLD:
-        resultado.alertas.append(
-            {"evento": procesados, "feature": FEATURES[idx], "z_score": round(z_max, 2)}
+        result.alerts.append(
+            {"event": processed, "feature": FEATURES[idx], "z_score": round(z_max, 2)}
         )
 
 
-def consumidor(stream: "queue.Queue", resultado: ResultadoStreaming) -> None:
-    ventana: deque[Evento] = deque(maxlen=WINDOW_SIZE)  # últimos WINDOW_SIZE eventos
-    procesados = 0
+def consumer(stream: "queue.Queue", result: StreamingResult) -> None:
+    window: deque[Event] = deque(maxlen=WINDOW_SIZE)  # últimos WINDOW_SIZE eventos
+    processed = 0
     while True:
         ev = stream.get()
         if ev is STOP:
@@ -92,38 +92,38 @@ def consumidor(stream: "queue.Queue", resultado: ResultadoStreaming) -> None:
 
         t0 = time.perf_counter()
         pred, _ = predict(ev.values)  # inferencia online, un evento a la vez
-        resultado.latencias_ms.append((time.perf_counter() - t0) * 1000)
-        resultado.predicciones.append(pred)
+        result.latencies_ms.append((time.perf_counter() - t0) * 1000)
+        result.predictions.append(pred)
 
-        ventana.append(ev)
-        procesados += 1
-        if procesados % CHECK_EVERY == 0 and ventana:
-            _revisar_drift(ventana, procesados, resultado)
+        window.append(ev)
+        processed += 1
+        if processed % CHECK_EVERY == 0 and window:
+            _check_drift(window, processed, result)
 
 
-def correr_streaming(eventos: list[Evento], delay: float = 0.0005) -> ResultadoStreaming:
+def run_streaming(events: list[Event], delay: float = 0.0005) -> StreamingResult:
     """Levanta productor + consumidor en hilos separados y devuelve las
     métricas por ventana (throughput, p95, alertas de drift)."""
     stream: queue.Queue = queue.Queue()
-    resultado = ResultadoStreaming()
+    result = StreamingResult()
 
     t0 = time.time()
-    pt = threading.Thread(target=productor, args=(stream, eventos, delay))
-    ct = threading.Thread(target=consumidor, args=(stream, resultado))
+    pt = threading.Thread(target=producer, args=(stream, events, delay))
+    ct = threading.Thread(target=consumer, args=(stream, result))
     pt.start()
     ct.start()
     pt.join()
     ct.join()
-    resultado.duracion_s = time.time() - t0
+    result.duration_s = time.time() - t0
 
-    resultado.throughput_ev_s = len(resultado.latencias_ms) / resultado.duracion_s
-    resultado.p95_ms = float(np.percentile(resultado.latencias_ms, 95))
-    return resultado
+    result.throughput_ev_s = len(result.latencies_ms) / result.duration_s
+    result.p95_ms = float(np.percentile(result.latencies_ms, 95))
+    return result
 
 
-def puntuar_batch(eventos: list[Evento]) -> tuple[list[int], float]:
+def score_batch(events: list[Event]) -> tuple[list[int], float]:
     """Puntúa todos los eventos de una sola vez. Devuelve (predicciones, ms_totales)."""
-    X = [e.values for e in eventos]
+    X = [e.values for e in events]
     t0 = time.perf_counter()
     preds = predict_batch(X)
     ms = (time.perf_counter() - t0) * 1000

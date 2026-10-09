@@ -43,6 +43,7 @@ class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     model_loaded: bool
     model_version: str | None = None
+    model_source: str = "disk"
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -51,6 +52,7 @@ def health() -> HealthResponse:
         status="ok" if svc.is_loaded() else "degraded",
         model_loaded=svc.is_loaded(),
         model_version=svc.METADATA.get("model_version"),
+        model_source=svc.MODEL_SOURCE,
     )
 
 

@@ -7,6 +7,7 @@ modelo desde acá.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -16,9 +17,20 @@ import numpy as np
 # Raíz del repo -> model/model.joblib
 MODEL_PATH = Path(__file__).resolve().parents[2] / "model" / "model.joblib"
 
-_artifact: dict[str, Any] | None = (
-    joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
-)
+# Mini-TP 6: con MODEL_SOURCE=lake el artefacto se descarga del Data Lake
+# (models/<MODEL_VERSION>/) en lugar de leerse de disco.
+MODEL_SOURCE = os.environ.get("MODEL_SOURCE", "disk")
+
+
+def _load() -> dict[str, Any] | None:
+    if MODEL_SOURCE == "lake":
+        from .datalake import load_model
+
+        return load_model(os.environ.get("MODEL_VERSION", "v1"))
+    return joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
+
+
+_artifact: dict[str, Any] | None = _load()
 _pipeline = _artifact["pipeline"] if _artifact else None
 METADATA: dict[str, Any] = _artifact["metadata"] if _artifact else {}
 

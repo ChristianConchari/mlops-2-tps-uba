@@ -17,6 +17,11 @@ dependencies = [
     "ipykernel>=6.29",
     "grpcio>=1.83.1",
     "grpcio-tools>=1.83.1",
+    "boto3>=1.43.110",
+    "mlflow>=3",
+    "minio>=7.2.20",
+    "cryptography>=50.0.2",
+    "pyjwt>=2.15.1",
 ]
 
 [tool.hatch.build.targets.wheel]

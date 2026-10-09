@@ -14,6 +14,9 @@ src/model_service/     el servicio (código compartido entre TPs)
   scoring_pb2*.py       stubs generados (Mini-TP 3)
   grpc_server.py        API gRPC      (Mini-TP 3)
   streaming.py          scoring online + drift (Mini-TP 4)
+  datalake.py           Data Lake MinIO/S3: zonas + modelo versionado (Mini-TP 6)
+  lake_security.py      seguridad SAIF del lake (Mini-TP 7)
+  grpc_security.py      seguridad SAIF de gRPC: auth, mTLS, límite de tamaño (Mini-TP 7)
 train.py               entrena y genera model/model.joblib
 model/                 artefacto entrenado + metadata
 entregas/              un notebook por entrega (narrativa evaluable)
@@ -21,6 +24,8 @@ entregas/              un notebook por entrega (narrativa evaluable)
   tp2.ipynb            GraphQL + comparación REST vs GraphQL
   tp3.ipynb            gRPC (unary + streaming) + comparación gRPC vs REST
   tp4.ipynb            streaming: inferencia online, ventanas, drift, batch vs streaming
+  tp6.ipynb            Data Lake: zonas, models/v1, servir desde el lake, MLflow -> MinIO
+  tp7.ipynb            seguridad SAIF del lake y de gRPC
 ```
 
 Cada entrega queda fijada con un tag de git (`entrega-tp1`, `entrega-tp2`, …).
@@ -34,6 +39,8 @@ Cada entrega queda fijada con un tag de git (`entrega-tp1`, `entrega-tp2`, …).
 | Mini-TP 2 | 2 | Capa GraphQL (Strawberry) sobre el mismo servicio: tipo `Model` (`name`, `version`, `algorithm`, `metrics`) leído del artefacto + comparación REST vs GraphQL | `entregas/tp2.ipynb` | `entrega-tp2` | ✅ Entregado |
 | Mini-TP 3 | 3 | Servicio gRPC (`scoring.proto` tipado a los 4 features del modelo): `Predict` unary y `PredictBatch` server-streaming, servidor carga el modelo una sola vez + comparación de latencia gRPC vs REST | `entregas/tp3.ipynb` | `entrega-tp3` | ✅ Entregado |
 | Mini-TP 4 | 4 | Scoring online sobre un flujo de eventos (`streaming.py`): productor/consumidor en threads, inferencia evento a evento, métricas por ventana deslizante (throughput, p95), detector de drift por z-score + alertas, comparación contra scoring batch | `entregas/tp4.ipynb` | `entrega-tp4` | ✅ Entregado |
+| Mini-TP 6 | 6 | Data Lake en MinIO (`datalake.py`): bucket `mlops2-lake` con zonas `raw`/`curated`/`models`, artefacto versionado en `models/v1/`, `MODEL_SOURCE=lake` hace que el servicio descargue el modelo al arrancar (la API REST lo informa en `/health`), experimento de MLflow con artefactos en `s3://mlops2-lake/mlflow/` | `entregas/tp6.ipynb` | `entrega-tp6` | 🟡 Listo, sin entregar |
+| Mini-TP 7 | 7 | Seguridad SAIF en dos capas. **Data Lake** (`lake_security.py`): bucket público vs URL prefirmada con expiración, SHA-256 verificado antes de `joblib.load` (detecta el artefacto manipulado), un usuario de MinIO por rol con política IAM por prefijo (serving no puede escribir `models/`, ingestor no puede leerlo) y audit log persistido en `audit/`. **gRPC** (`grpc_security.py`): proxy espía que lee token y predicción del canal inseguro, interceptor que verifica un JWT (firma HS256, vencimiento, emisor) y autoriza por el claim `role` (`UNAUTHENTICATED`/`PERMISSION_DENIED`), mTLS con CA propia (el espía ya no lee nada), `max_receive_message_length` de 64 KB (`RESOURCE_EXHAUSTED`) y audit log por RPC | `entregas/tp7.ipynb` | `entrega-tp7` | 🟡 Listo, sin entregar |
 
 ### Mini-TP 2 — REST vs GraphQL (medido en el notebook)
 
@@ -73,10 +80,10 @@ mismo modelo `iris-rf` puntuado evento a evento vs en un solo batch:
 
 | | ms/evento |
 |---|---|
-| Streaming (online) | 13.06 |
-| Batch | 0.022 |
+| Streaming (online) | 14.77 |
+| Batch | 0.027 |
 
-El batch resultó ~590x más barato por evento (una sola llamada vectorizada a
+El batch resultó ~540x más barato por evento (una sola llamada vectorizada a
 `pipeline.predict` vs. N llamadas individuales con overhead de cola/hilo en
 el medio); las 800 predicciones coinciden entre ambos caminos. El detector de
 drift (z-score de la media de la ventana deslizante de 100 eventos contra la
@@ -91,6 +98,16 @@ uv venv --python 3.11 .venv
 uv pip install -e .
 uv run python train.py          # genera model/model.joblib
 uv run jupyter lab              # abrir entregas/*.ipynb
+```
+
+Los Mini-TPs 6 y 7 necesitan MinIO en `localhost:9000` (`minio` / `minio123`):
+
+```bash
+docker run -d --name minio -p 9000:9000 -p 9001:9001 \
+  -e MINIO_ROOT_USER=minio -e MINIO_ROOT_PASSWORD=minio123 \
+  quay.io/minio/minio server /data --console-address ":9001"
+
+MODEL_SOURCE=lake uv run uvicorn model_service.rest:app --port 8100   # REST sirviendo desde el lake
 ```
 
 Las APIs también se levantan sueltas:
