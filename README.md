@@ -14,6 +14,7 @@ src/model_service/     el servicio (código compartido entre TPs)
   scoring_pb2*.py       stubs generados (Mini-TP 3)
   grpc_server.py        API gRPC      (Mini-TP 3)
   streaming.py          scoring online + drift (Mini-TP 4)
+  federated.py          FedAvg, particiones IID/non-IID, DP-FedAvg (Mini-TP 5)
   datalake.py           Data Lake MinIO/S3: zonas + modelo versionado (Mini-TP 6)
   lake_security.py      seguridad SAIF del lake (Mini-TP 7)
   grpc_security.py      seguridad SAIF de gRPC: auth, mTLS, límite de tamaño (Mini-TP 7)
@@ -24,6 +25,7 @@ entregas/              un notebook por entrega (narrativa evaluable)
   tp2.ipynb            GraphQL + comparación REST vs GraphQL
   tp3.ipynb            gRPC (unary + streaming) + comparación gRPC vs REST
   tp4.ipynb            streaming: inferencia online, ventanas, drift, batch vs streaming
+  tp5.ipynb            federado: FedAvg IID vs non-IID vs centralizado + privacidad diferencial
   tp6.ipynb            Data Lake: zonas, models/v1, servir desde el lake, MLflow -> MinIO
   tp7.ipynb            seguridad SAIF del lake y de gRPC
 ```
@@ -39,6 +41,7 @@ Cada entrega queda fijada con un tag de git (`entrega-tp1`, `entrega-tp2`, …).
 | Mini-TP 2 | 2 | Capa GraphQL (Strawberry) sobre el mismo servicio: tipo `Model` (`name`, `version`, `algorithm`, `metrics`) leído del artefacto + comparación REST vs GraphQL | `entregas/tp2.ipynb` | `entrega-tp2` | ✅ Entregado |
 | Mini-TP 3 | 3 | Servicio gRPC (`scoring.proto` tipado a los 4 features del modelo): `Predict` unary y `PredictBatch` server-streaming, servidor carga el modelo una sola vez + comparación de latencia gRPC vs REST | `entregas/tp3.ipynb` | `entrega-tp3` | ✅ Entregado |
 | Mini-TP 4 | 4 | Scoring online sobre un flujo de eventos (`streaming.py`): productor/consumidor en threads, inferencia evento a evento, métricas por ventana deslizante (throughput, p95), detector de drift por z-score + alertas, comparación contra scoring batch | `entregas/tp4.ipynb` | `entrega-tp4` | ✅ Entregado |
+| Mini-TP 5 | 5 | Aprendizaje federado sobre el dataset de `iris-rf` (`federated.py`): FedAvg con un softmax (el RF no tiene parámetros promediables), 6 clientes con 1/3 por ronda, partición IID vs non-IID (una clase por cliente) vs centralizado, 30 semillas, y DP-FedAvg (recorte + ruido) barriendo sigma | `entregas/tp5.ipynb` | — | 🟡 Listo, sin entregar |
 | Mini-TP 6 | 6 | Data Lake en MinIO (`datalake.py`): bucket `mlops2-lake` con zonas `raw`/`curated`/`models`, artefacto versionado en `models/v1/`, `MODEL_SOURCE=lake` hace que el servicio descargue el modelo al arrancar (la API REST lo informa en `/health`), experimento de MLflow con artefactos en `s3://mlops2-lake/mlflow/` | `entregas/tp6.ipynb` | `entrega-tp6` | 🟡 Listo, sin entregar |
 | Mini-TP 7 | 7 | Seguridad SAIF en dos capas. **Data Lake** (`lake_security.py`): bucket público vs URL prefirmada con expiración, SHA-256 verificado antes de `joblib.load` (detecta el artefacto manipulado), un usuario de MinIO por rol con política IAM por prefijo (serving no puede escribir `models/`, ingestor no puede leerlo) y audit log persistido en `audit/`. **gRPC** (`grpc_security.py`): proxy espía que lee token y predicción del canal inseguro, interceptor que verifica un JWT (firma HS256, vencimiento, emisor) y autoriza por el claim `role` (`UNAUTHENTICATED`/`PERMISSION_DENIED`), mTLS con CA propia (el espía ya no lee nada), `max_receive_message_length` de 64 KB (`RESOURCE_EXHAUSTED`) y audit log por RPC | `entregas/tp7.ipynb` | `entrega-tp7` | 🟡 Listo, sin entregar |
 
